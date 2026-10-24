@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Consumo Burgman</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e8edf0;--card:#f7f9fa;--ink:#12202a;--mut:#5a6a75;--acc:#0b7a85;--fuel:#e09a00;--line:#cfd8de;--on:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e161b;--card:#16222a;--ink:#e6eef2;--mut:#93a4af;--acc:#3cc4cf;--fuel:#f5b82e;--line:#2a3a44;--on:#06222a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e161b;--card:#16222a;--ink:#e6eef2;--mut:#93a4af;--acc:#3cc4cf;--fuel:#f5b82e;--line:#2a3a44;--on:#06222a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 Barlow,system-ui,sans-serif}
+main{max-width:520px;margin:0 auto;padding:14px}
+h1{font:700 24px 'Barlow Condensed',system-ui,sans-serif;margin:4px 0 12px}
+h2{font:600 17px Barlow,system-ui,sans-serif;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.spd{font:700 104px/1 'Barlow Condensed',system-ui,sans-serif;display:flex;align-items:baseline;gap:8px}
+.spd small{font-size:24px;color:var(--mut);font-weight:600}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.st b{font:700 28px 'Barlow Condensed',system-ui,sans-serif;display:block}
+.st span{color:var(--mut);font-size:14px}
+button{font:600 16px Barlow,system-ui,sans-serif;border:0;border-radius:10px;padding:12px 16px;background:var(--acc);color:var(--on);cursor:pointer}
+button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;width:80px;box-sizing:border-box}
+input[type=checkbox]{width:auto}input[type=range]{width:100%;padding:0}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
+.mut{color:var(--mut);font-size:14px}
+.bin{display:grid;grid-template-columns:62px 72px 1fr 52px;gap:8px;align-items:center;padding:4px 6px;border-radius:8px}
+.bin.on{outline:2px solid var(--acc)}
+.bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--fuel)}
+.f{padding:6px 0;border-top:1px solid var(--line);font-size:15px}
+</style>
+</head>
+<body>
+<main>
+<h1>Consumo Burgman</h1>
+
+<section class="card">
+  <div class="spd"><span id="v">0</span><small>km/h</small></div>
+  <div class="mut" id="ci">—</div>
+  <div class="mut" id="win"></div>
+  <div class="row"><button id="go">Avvia</button><span class="mut" id="msg">Premi Avvia quando accendi il motore.</span></div>
+</section>
+
+<section class="card">
+  <h2>Dall’ultimo pieno</h2>
+  <div class="grid">
+    <div class="st"><b id="km">0,0</b><span>km tracciati</span></div>
+    <div class="st"><b id="u">0,00</b><span>litri usati</span></div>
+    <div class="st"><b id="avg">—</b><span>km/l medi</span></div>
+    <div class="st"><b id="rest">—</b><span>litri rimasti</span></div>
+    <div class="st"><b id="rng">—</b><span>km di autonomia</span></div>
+  </div>
+  <div class="row"><button class="alt" id="zero">Azzera dall’ultimo pieno</button></div>
+</section>
+
+<section class="card">
+  <h2>Registra un pieno</h2>
+  <div class="mut">Riempi fino all’orlo, poi inserisci i litri messi. L’app corregge il profilo.</div>
+  <div class="row"><input id="lit" type="number" step="0.01" min="0" inputmode="decimal" placeholder="litri"><button id="fill">Registra pieno</button></div>
+  <div class="mut" id="fm"></div>
+  <div id="hist"></div>
+</section>
+
+<section class="card">
+  <h2>Profilo di consumo</h2>
+  <div class="row"><label for="avgi">Consumo medio (km/l)</label><input id="avgi" type="number" step="0.1" inputmode="decimal"><button class="alt" id="apply">Applica</button></div>
+  <div class="mut">Km/l a velocità costante per fascia, più un costo a parte per ogni accelerazione. La forma di partenza viene dai test inSella dell’Honda SH 125, scalata sulla tua media. Si aggiorna da sola a ogni pieno; se la modifichi a mano, i pieni già registrati non contano più per la calibrazione.</div>
+  <div id="bins"></div>
+  <div class="mut" id="gm"></div>
+  <div class="row"><label for="idle">Al minimo (L/h)</label><input id="idle" type="number" step="0.05" inputmode="decimal"><label for="tank">Serbatoio (L)</label><input id="tank" type="number" step="0.5" inputmode="decimal"></div>
+</section>
+
+<section class="card">
+  <h2>Prova senza GPS</h2>
+  <div class="row"><label><input type="checkbox" id="sim"> Simula la velocità (attiva prima di Avvia)</label></div>
+  <input type="range" id="sv" min="0" max="110" value="50">
+  <div class="row"><button class="alt" id="wipe">Cancella tutti i dati</button></div>
+</section>
+</main>
+
+<script>
+const LAB=['3–20','20–40','40–60','60–80','80–100','100+'],SH=[2.5,1.99,1.79,2.3,2.65,4.1],W=[.1,.25,.3,.2,.1,.05],G0=.2;
+const $=id=>document.getElementById(id);
+const fmt=(x,n=1)=>x.toLocaleString('it-IT',{minimumFractionDigits:n,maximumFractionDigits:n});
+const z=()=>({d:[0,0,0,0,0,0],h:0,e:0});
+const bin=v=>v<20?0:v<40?1:v<60?2:v<80?3:v<100?4:5;
+let S,v=0,last=null,on=false,wid=null,sim=null,lock=null,lastSave=0;
+
+function def(a,w=W){const m=SH.reduce((s,x,i)=>s+x*w[i],0),p=SH.map(x=>+(a*x/m).toFixed(2));return{avg:a,base:[...p],prof:[...p],idle:.25,tank:10,fills:[],fit0:0,gam:G0,gam0:G0,seg:z()}}
+function load(){try{S=JSON.parse(localStorage.getItem('burg2'))}catch(e){}if(!S||!S.prof)S=def(2.98);if(S.gam==null){S.gam=S.gam0=G0}if(S.seg.e==null)S.seg.e=0}
+function save(){try{localStorage.setItem('burg2',JSON.stringify(S))}catch(e){}}
+const km=(g=S.seg)=>g.d.reduce((a,x)=>a+x,0);
+const used=(g=S.seg)=>g.d.reduce((a,x,i)=>a+x*S.prof[i]/100,0)+g.h*S.idle+(g.e||0)*S.gam;
+
+function solve(M,r){const n=r.length;for(let i=0;i<n;i++){let p=i;for(let j=i+1;j<n;j++)if(Math.abs(M[j][i])>Math.abs(M[p][i]))p=j;[M[i],M[p]]=[M[p],M[i]];[r[i],r[p]]=[r[p],r[i]];for(let j=i+1;j<n;j++){const f=M[j][i]/M[i][i];for(let k=i;k<n;k++)M[j][k]-=f*M[i][k];r[j]-=f*r[i]}}const x=Array(n);for(let i=n-1;i>=0;i--){let s=r[i];for(let k=i+1;k<n;k++)s-=M[i][k]*x[k];x[i]=s/M[i][i]}return x}
+
+// Calibrazione: 1) fattore unico sul profilo di partenza; 2) ritocco per fascia (ridge verso il fattore unico)
+function refit(){
+  const F=S.fills.slice(Math.max(S.fit0||0,S.fills.length-8)).filter(f=>km(f)>=20);
+  if(!F.length){S.prof=[...S.base];S.gam=S.gam0;return}
+  let num=0,den=0;
+  const wt=F.map((_,i)=>Math.pow(.85,F.length-1-i));F.forEach((f,j)=>{num+=wt[j]*(f.l-S.idle*f.h);den+=wt[j]*(f.d.reduce((a,x,i)=>a+x*S.base[i]/100,0)+(f.e||0)*S.gam0)});
+  const k=den>0?num/den:1,P=[...S.base.map(x=>x*k),S.gam0*k],lam=3,n=7;
+  const M=P.map((_,i)=>P.map((_,j)=>i==j?lam:0)),r=P.map(x=>lam*x);
+  F.forEach((f,w)=>{const y=f.l-S.idle*f.h,a=[...f.d.map(x=>x/100),f.e||0];for(let i=0;i<n;i++){for(let j=0;j<n;j++)M[i][j]+=wt[w]*a[i]*a[j];r[i]+=wt[w]*a[i]*y}});
+  const s=solve(M,r);S.prof=s.slice(0,6).map(x=>+Math.min(14,Math.max(1,x)).toFixed(2));S.gam=Math.min(1.5,Math.max(0,s[6]));
+}
+
+let win=[];
+function feed(raw,t){
+  const kmh=last===null?raw:.6*v+.4*raw;
+  if(last!==null){const dt=Math.min((t-last)/1000,10),m1=v/3.6,m2=kmh/3.6;
+    let dk=0,dl=0;
+    if(kmh<3){S.seg.h+=dt/3600;dl=S.idle*dt/3600}
+    else{dk=kmh*dt/3600;S.seg.d[bin(kmh)]+=dk;dl=dk*S.prof[bin(kmh)]/100}
+    const a=dt>0?(m2-m1)/dt:0;
+    if(a>.3){const q=(m2*m2-m1*m1)/2*2.3e-4;S.seg.e+=q;dl+=q*S.gam}
+    win.push([t,dk,dl]);while(win.length&&t-win[0][0]>300000)win.shift()}
+  v=kmh;last=t;draw();
+  if(t-lastSave>10000){save();lastSave=t}
+}
+
+async function start(){
+  on=true;last=null;win=[];$('go').textContent='Ferma';
+  try{lock=await navigator.wakeLock.request('screen')}catch(e){}
+  if($('sim').checked){sim=setInterval(()=>feed(+$('sv').value,Date.now()),1000);$('msg').textContent='Prova: velocità simulata.';return}
+  if(!navigator.geolocation){$('msg').textContent='GPS non disponibile su questo dispositivo.';return stop()}
+  $('msg').textContent='Cerco il segnale GPS…';
+  wid=navigator.geolocation.watchPosition(p=>{
+    if(p.coords.speed==null){$('msg').textContent='Il GPS non fornisce ancora la velocità…';return}
+    $('msg').textContent='GPS attivo. Tieni lo schermo acceso.';
+    feed(p.coords.speed*3.6,p.timestamp||Date.now());
+  },e=>{$('msg').textContent=(e.code==1?'Posizione non consentita a questa pagina. Se hai già dato il permesso a Safari, la pagina è probabilmente incorporata: ospitala su un tuo indirizzo https. ':'Errore GPS: ')+e.message;if(e.code==1)stop()},{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+}
+function stop(){
+  on=false;last=null;v=0;
+  if(wid!=null)navigator.geolocation.clearWatch(wid);wid=null;
+  clearInterval(sim);sim=null;
+  try{lock&&lock.release()}catch(e){}lock=null;
+  $('go').textContent='Avvia';save();draw();
+}
+
+function draw(){
+  const d=km(),u=used();
+  $('v').textContent=Math.round(v);
+  $('ci').textContent=v>=3?fmt(100/S.prof[bin(v)],1)+' km/l a questa velocità':(on?'Fermo: '+fmt(S.idle,2)+' L/h':'Consumo istantaneo');
+  const wk=win.reduce((a,x)=>a+x[1],0),wl=win.reduce((a,x)=>a+x[2],0),sp=win.length>10?(win[win.length-1][0]-win[0][0])/3600000:0;
+  $('win').textContent=sp>0&&wl>0?'Ultimi 5 min: '+fmt(wk/sp,0)+' km/h di andatura media, '+fmt(wk/wl,1)+' km/l':'';
+  $('km').textContent=fmt(d,1);$('u').textContent=fmt(u,2);
+  const a=d>10?u/d*100:S.avg,rest=Math.max(0,S.tank-u);
+  $('avg').textContent=d>10?fmt(100/a,1):'—';
+  $('rest').textContent=fmt(rest,1);
+  $('rng').textContent=fmt(rest/a*100,0);
+  const ef=S.prof.map(x=>100/x),mx=Math.max(...ef);
+  document.querySelectorAll('.bin').forEach((el,i)=>{
+    el.classList.toggle('on',v>=3&&bin(v)==i);
+    el.querySelector('i').style.width=ef[i]/mx*100+'%';
+    el.querySelector('.k').textContent=fmt(S.seg.d[i],0)+' km';
+  });
+}
+
+function refresh(){
+  document.querySelectorAll('.bin input').forEach((el,i)=>el.value=+(100/S.prof[i]).toFixed(1));
+  $('avgi').value=+(100/S.avg).toFixed(1);$('gm').textContent='Costo stimato di una partenza da 0 a 50 km/h: '+fmt(S.gam*22.2,1)+' mL di benzina.';$('idle').value=S.idle;$('tank').value=S.tank;
+  $('hist').innerHTML=S.fills.slice().reverse().slice(0,6).map(f=>{
+    const d=km(f),e=(f.est-f.l)/f.l*100;
+    return '<div class="f">'+fmt(d,0)+' km, '+fmt(f.l,2)+' L: '+fmt(d/f.l,1)+' km/l. Stima prima del pieno: '+fmt(f.est,2)+' L ('+(e>0?'+':'')+fmt(e,1)+'%)</div>'
+  }).join('');
+  draw();
+}
+
+function build(){
+  $('bins').innerHTML=LAB.map(l=>'<div class="bin"><span>'+l+' km/h</span><input type="number" step="0.5" inputmode="decimal"><div class="bar"><i></i></div><span class="mut k"></span></div>').join('');
+  document.querySelectorAll('.bin input').forEach((el,i)=>el.onchange=()=>{const x=100/+el.value;if(x>0&&isFinite(x)){S.prof[i]=+x.toFixed(3);S.base=[...S.prof];S.gam0=S.gam;S.fit0=S.fills.length;save();draw()}});
+}
+
+$('go').onclick=()=>on?stop():start();
+$('zero').onclick=()=>{S.seg=z();save();refresh()};
+function mixW(){const t=[0,0,0,0,0,0];S.fills.forEach(f=>f.d.forEach((x,i)=>t[i]+=x));S.seg.d.forEach((x,i)=>t[i]+=x);const s=t.reduce((a,x)=>a+x,0);return s>=20?t.map(x=>x/s):W}
+$('apply').onclick=()=>{const x=+$('avgi').value;if(x>0){const a=100/x,n=def(a,mixW());S.avg=a;S.base=n.base;S.prof=[...n.base];S.gam=S.gam0=G0;S.fit0=S.fills.length;save();refresh()}};
+$('avgi').onchange=()=>$('apply').onclick();
+$('idle').onchange=()=>{const x=+$('idle').value;if(x>=0){S.idle=x;save();draw()}};
+$('tank').onchange=()=>{const x=+$('tank').value;if(x>0){S.tank=x;save();draw()}};
+$('fill').onclick=()=>{
+  const l=+$('lit').value;
+  if(km()<20){$('fm').textContent='Servono almeno 20 km tracciati dall’ultimo pieno.';return}
+  if(!(l>0)){$('fm').textContent='Inserisci i litri messi.';return}
+  S.fills.push({l,h:S.seg.h,d:[...S.seg.d],e:S.seg.e,est:used()});
+  S.seg=z();refit();save();$('lit').value='';$('fm').textContent='Pieno registrato, profilo aggiornato.';refresh();
+};
+let armed=false;
+$('wipe').onclick=()=>{
+  if(!armed){armed=true;$('wipe').textContent='Sicuro? Tocca di nuovo';return}
+  armed=false;$('wipe').textContent='Cancella tutti i dati';S=def(2.98);save();refresh();
+};
+
+load();build();refresh();
+</script>
+</body>
+</html>
